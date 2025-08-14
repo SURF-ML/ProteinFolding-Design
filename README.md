@@ -31,9 +31,9 @@ The entire pipeline can be executed by submitting a single Slurm script.
 
 You must edit the following variables in the Slurm script before submitting:
 
-* `PROJECT_SPACE`: Set this to the root directory of your project. The default is `"./"`.
+* `PROJECT_SPACE`: Set this to the root directory of your project. The default is `"./"`, under apptainer/.
 
-* `INPUT_PDB_PATH`: The full path to the input PDB file you want to use as a motif or scaffold.
+* `INPUT_PDB_PATH`: The full path to the input PDB file.
 
 * `OUTPUT_PATH`: The directory where all final and intermediate files will be saved.
 
@@ -41,7 +41,7 @@ You must edit the following variables in the Slurm script before submitting:
 
 ### Notes on Apptainer Usage
 
-* **Overlay File**: The script creates a temporary `rfdiffusion_overlay.img` file. The default size of 128MB is sufficient for this examples. You should increase this size if you are generating a very large number of intermediate files and run into storage errors during the run.
+* **Overlay File**: The script creates a temporary `rfdiffusion_overlay.img` file. The default size of 128MB is sufficient for these examples. You should increase this size if you are generating a very large number of intermediate files and run into storage errors during the run.
 
 * **File Binding**: For ProteinMPNN to read the output from RFdiffusion and write its own results, its container needs access to the working directory. This is handled by the `--bind "$PWD":"$PWD":rw` flag in the `apptainer run` command.
 

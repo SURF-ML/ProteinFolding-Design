@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# Slurm submission script for AlphaFold 2 pipeline.
+#
+
+#SBATCH --job-name=AF2                  # Name of the job
+#SBATCH --nodes=1                       # Use a single node
+#SBATCH --time=00:10:00                 # Maximum execution time: 10 minutes
+#SBATCH --partition gpu_a100            # Use A100 partition for AF2. AF2 is not available for H100
+#SBATCH --gpus 1                        # Use a single GPU
+#SBATCH --output=AF2%j.out              # Standard output log
+#SBATCH --error=AF2%j.err               # Standard error log
+
+
+# load environment
+module load 2022
+module load AlphaFold/2.3.1-foss-2022a-CUDA-11.7.0
+
+# Path to the dataset.
+DATA_PATH=/projects/2/managed_datasets/AlphaFold/2.3.1
+
+# --- VARIABLE DEFINITIONS ---
+# Define the base project directory
+PROJECT_SPACE="./"
+
+# File path of the input .fasta file. Change you to your desired file
+INPUT_FASTA=${PROJECT_SPACE}/alphafold2/inputs/rcsb_pdb_7XTB.fasta
+
+# Location where output files are written to.
+OUTPUT_PATH=${PROJECT_SPACE}/alphafold2/outputs/
+
+# arguments
+cmd_args="--fasta_paths ${INPUT_FASTA}
+--output_dir ${OUTPUT_PATH}
+--db_preset full_dbs
+--data_dir ${DATA_PATH}
+--max_template_date 2023-03-20"
+
+alphafold ${cmd_args}

@@ -1,10 +1,29 @@
+# Introduction
+This document outlines computational pipelines for protein design and protein prediction, focussed on using apptainers on Snellius. 
+## Table of contents
+
+- [Introduction](#introduction)
+
+- [Protein Design Pipeline](#protein-design-pipeline)  
+  - [RFdiffusion & ProteinMPNN](#rfdiffusion--proteinmpnn)  
+  - [Overview](#overview)  
+  - [How to Run the Pipeline](#how-to-run-the-pipeline)  
+  - [Configuration](#configuration)  
+    - [Notes on Apptainer Usage](#notes-on-apptainer-usage)
+  - [Running Stages Separately](#running-stages-separately)  
+    - [To run ONLY RFdiffusion](#to-run-only-rfdiffusion)  
+    - [To run ONLY ProteinMPNN](#to-run-only-proteinmpnn)  
+- [Protein Structure Prediction (AF2/3)](#protein-structure-prediction-af23)
+
+
+
 # Protein Design Pipeline
 
-This document outlines a computational pipeline for protein design using Apptainer containers.
+This chapter outlines a computational pipeline for protein design using Apptainer containers.
 
 ## RFdiffusion & ProteinMPNN
 
-Currently, this concerns the use of RFD and ProteinMPNN
+Currently, this concerns the use of RFD and ProteinMPNN.
 
 ## Overview
 
@@ -31,9 +50,9 @@ The entire pipeline can be executed by submitting a single Slurm script.
 
 You must edit the following variables in the Slurm script before submitting:
 
-* `PROJECT_SPACE`: Set this to the root directory of your project. The default is `"./"`, under apptainer/.
+* `PROJECT_SPACE`: Set this to the root directory of your project. The default is `"./"`.
 
-* `INPUT_PDB_PATH`: The full path to the input PDB file.
+* `INPUT_PDB_PATH`: The full path to the input PDB file you want to use as a motif or scaffold.
 
 * `OUTPUT_PATH`: The directory where all final and intermediate files will be saved.
 
@@ -41,7 +60,7 @@ You must edit the following variables in the Slurm script before submitting:
 
 ### Notes on Apptainer Usage
 
-* **Overlay File**: The script creates a temporary `rfdiffusion_overlay.img` file. The default size of 128MB is sufficient for these examples. You should increase this size if you are generating a very large number of intermediate files and run into storage errors during the run.
+* **Overlay File**: The script creates a temporary `rfdiffusion_overlay.img` file. The default size of 128MB is sufficient for this examples. You should increase this size if you are generating a very large number of intermediate files and run into storage errors during the run.
 
 * **File Binding**: For ProteinMPNN to read the output from RFdiffusion and write its own results, its container needs access to the working directory. This is handled by the `--bind "$PWD":"$PWD":rw` flag in the `apptainer run` command.
 
@@ -63,12 +82,107 @@ If you already have generated scaffolds, use the `proteinmpnn_example.job` scrip
 sbatch slurm_files/proteinmpnn_example.job
 ```
 
-## Customizing the Pipeline
 
-You can modify the behavior of both RFdiffusion and ProteinMPNN by changing their command-line arguments directly within the example Slurm scripts. For a more complex example, you can also refer to the `rfd_ppi_binder.job` script, which shows a setup for protein-protein interaction (PPI) binder design.
+# Protein Structure Prediction (AF2/3)
+For protein structure prediction we have both AlphaFold 2 and AlphaFold 3 available on the system as pre-installed containers. These are freely available in our [environment modules](https://servicedesk.surf.nl/wiki/spaces/WIKI/pages/30660245/Environment+Modules). For more in-depth information about these, refer to `READMEs/alphafold_on_snellius.md` & `READMEs/alphafold3_on_snellius.md`.
+
+## Loading the Modules
+Both AlphaFold 2 and AlphaFold 3 are available as modules on our system, and can be loaded as follows:
+
+### AlphaFold 2
+```bash
+module load 2022
+module load AlphaFold/2.3.1-foss-2022a-CUDA-11.7.0
+```
+**Note**: the 2022 software stack is *not* available on the H100 GPU nodes. So it should be used on the A100 nodes.
+### AlphaFold 3
+```bash
+module load 2024
+module load AlphaFold/3.0.0-foss-2024a-CUDA-12.6.0
+```
+
+## Running the Pipeline
+
+
+Similar as before, there are example SLURM scripts in the `slurm_files` directory for both AlphaFold variants. 
+
+### AlphaFold 2
+For AlphaFold 2, this is simply a single script that executes both the CPU only data pipeline and the GPU pipeline in one go. Unfortunately, it does not allow splitting the workload, which would reduce the GPU idling time. This pipeline can be executed using
+```bash
+sbatch slurm_files/AF2.job
+```
+
+
+### AlphaFold 3
+AlphaFold 3 does support splitting the pipeline, allowing us to run the CPU-only data pipeline on CPU nodes and the GPU model inference pipeline on GPU nodes. The two scripts to run are:
+
+```bash
+sbatch slurm_files/AF3_data.job
+```
+
+and 
+
+```bash
+sbatch slurm_files/AF3_inference.job
+```
+
+Since the first job needs to complete before the second one starts, we can actually create a dependency for the second job to only start after the first one finishes succesfully:
+
+```bash
+# --- VARIABLE DEFINITIONS---
+# Define the base project directory
+PROJECT_SPACE="./"
+
+# Path of the input AF3 json file. Change this to the location of your input file.
+INPUT_JSON_PATH=${PROJECT_SPACE}/alphafold3/inputs/fold_input.json
+
+# Path where the output files are written to
+OUTPUT_PATH=${PROJECT_SPACE}/alphafold3/outputs/
+# Path to the model weights. Change to the location of your weights
+MODEL_PATH=~/AF3Weights
+
+# First scheduling data pipeline with passed variables and storing job id.
+jid1=$(sbatch --parsable --export=PROJECT_SPACE,INPUT_JSON_PATH,OUTPUT_PATH slurm_files/AF3_data.job)
+# Scheduling inference job with dependency on data pipeline job.
+sbatch --dependency=afterok:$jid1 --export=PROJECT_SPACE,INPUT_JSON_PATH,OUTPUT_PATH,MODEL_PATH slurm_files/AF3_inference.job
+```
+
+This script can be found in `slurm_files/AF_full_run.sh` and can be executed with:
+```bash
+bash slurm_files/AF_full_run.sh
+```
+
+**Note**: While the apptainer is pre-installed on Snellius with the environment modules, we do need to change some apptainer arguments to properly run it. Therefore we'll still use `apptainer run`, and we'll still have to bind (`-B`) some directories and pass the Nvidia GPU (`--nv`). See `READMEs/AlphaFold3_on_snellius.md` for more information.
+
+### Configuration
+Both of these scripts also require some variable configurations, similar as before. Here is a list with some variables to change for both AlphaFold 2 and AlphaFold 3:
+
+* `PROJECT_SPACE`: Set this to the root directory of your project. The default is `"./"`.
+
+* `OUTPUT_PATH`: The directory where all final and intermediate files will be saved.
+
+AlphaFold 2 variables:
+* `INPUT_FASTA`: The path of the input fasta protein file.
+
+AlphaFold 3 specific paths
+
+* `INPUT_JSON_PATH`: The path of the input JSON protein file. Used for both the inference and data pipeline. For the data pipeline path the output JSON with MSAs will be written to the `OUTPUT_PATH` depending on the 'name' property in the JSON. In the inference batch script, the name will be determined by reading the name from this input path, after which it will figure out where the data pipeline wrote the processed JSON file. 
+* `MODEL_PATH`: Path to the model weights of the AlphaFold 3 model. These are not hosted on Snellius and you have to [request these yourself from Google](https://docs.google.com/forms/d/e/1FAIpQLSfWZAgo1aYk0O4MuAXZj8xRQ8DafeFJnldNOnh_13qAx2ceZw/viewform?pli=1). 
+
+# Customizing the pipelines
+You can modify the behavior of all pipelines by changing their command-line arguments directly within the example Slurm scripts. For a more complex example, you can also refer to the `rfd_ppi_binder.job` script, which shows a setup for protein-protein interaction (PPI) binder design.
 
 For a full list of available options and advanced features, please refer to the official documentation for each tool:
 
 * **RFdiffusion**: https://github.com/RosettaCommons/RFdiffusion
 
 * **ProteinMPNN**: https://github.com/dauparas/ProteinMPNN
+
+* **AlphaFold 2**: https://github.com/google-deepmind/alphafold
+
+* **AlphaFold 3**: https://github.com/google-deepmind/alphafold3
+
+
+
+
+

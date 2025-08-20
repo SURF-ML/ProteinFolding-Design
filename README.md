@@ -1,5 +1,6 @@
 # Introduction
 This document outlines computational pipelines for protein design and protein prediction, focussed on using apptainers on Snellius. 
+
 ## Table of contents
 
 - [Introduction](#introduction)
@@ -9,11 +10,22 @@ This document outlines computational pipelines for protein design and protein pr
   - [Overview](#overview)  
   - [How to Run the Pipeline](#how-to-run-the-pipeline)  
   - [Configuration](#configuration)  
-    - [Notes on Apptainer Usage](#notes-on-apptainer-usage)
+    - [Notes on Apptainer Usage](#notes-on-apptainer-usage)  
   - [Running Stages Separately](#running-stages-separately)  
     - [To run ONLY RFdiffusion](#to-run-only-rfdiffusion)  
     - [To run ONLY ProteinMPNN](#to-run-only-proteinmpnn)  
-- [Protein Structure Prediction (AF2/3)](#protein-structure-prediction-af23)
+
+- [Protein Structure Prediction (AF2/3)](#protein-structure-prediction-af23)  
+  - [Loading the Modules](#loading-the-modules)  
+    - [AlphaFold 2](#alphafold-2)  
+    - [AlphaFold 3](#alphafold-3)  
+  - [Running the Pipeline](#running-the-pipeline)  
+    - [AlphaFold 2](#alphafold-2-1)  
+    - [AlphaFold 3](#alphafold-3-1)  
+  - [Configuration](#configuration-1)  
+
+- [Customizing the Pipelines](#customizing-the-pipelines)
+
 
 
 

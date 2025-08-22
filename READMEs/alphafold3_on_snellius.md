@@ -141,7 +141,7 @@ Batch script to only run the AF3 CPU-only data pipeline.
 #SBATCH --time=01:30:00             # Maximum execution time: 1.5 hours
 #SBATCH --partition genoa           # Use Genoa CPU partition
 #SBATCH --ntasks 1                  # Run a single task
-#SBATCH --cpus-per-task 16          # Allocate 16 CPU cores per task
+#SBATCH --cpus-per-task 24          # Allocate 24 CPU cores per task. See Note below
 #SBATCH --output=AF3_data%j.out     # Standard output log
 #SBATCH --error=AF3_data%j.err      # Standard error log
 
@@ -178,6 +178,10 @@ apptainer run -B "$PWD:/workspace" \
     ${AF3_CONTAINER_PATH}  ${cmd_args}
 
 ```
+
+**Note**: In this script I will use 'only' 24 cores on the Genoa nodes. The main reason for this is that Jackhmmer, the most compute intensive parts of the data-pipeline, only spawns 4 parallel processes with only 8 CPU workers by default per worker. While this can be overridden by default using the `--jackhmmer_n_cpu <num_workers>` flag when calling the AlphaFold 3 container, according to my own experiments and AlphaFold 3's documentation this typically [does *not* result in any measurable speedup](https://github.com/google-deepmind/alphafold3/blob/main/run_alphafold.py#L179). 
+
+This means that a maximum of 4*8=32 cores can be used effectively. However, there is a big difference in the duration of the Jackhmmer processes (e.g. taking 70, 280, 430 and 580 seconds for the 4 processes), which can result in long idling of some cores. Therefore, I did not notice a significant overall speed-up going beyond the minimum allocation, which is 16 for the Rome nodes and 24 for the Genoa nodes.
 
 ### AF3 Inference Pipeline (`--run_data_pipeline=False`):
 Batch script to only run the AF3 GPU-based inference pipeline.

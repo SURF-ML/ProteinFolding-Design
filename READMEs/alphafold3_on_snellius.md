@@ -212,7 +212,7 @@ AF3_CONTAINER_PATH="/sw/arch/RHEL9/EB_production/2024/software/AlphaFold/3.0.0-f
 # The AF3 data pipeline will use the 'name' field in the input json to create a subdirectory for the output. Retrieve this name to find the output JSON file with the MSAs.
 # Change this in case you have it stored in a different location
 NAME=$(jq -r '.name' "$INPUT_JSON_PATH" | awk '{print tolower($0)}')
-REAL_INPUT_JSON_PATH=${PROJECT_SPACE}/alphafold3/outputs/${NAME}/${NAME}_data.json
+REAL_INPUT_JSON_PATH=${OUTPUT_PATH}/${NAME}/${NAME}_data.json
 
 
 # arguments

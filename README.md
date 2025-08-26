@@ -22,8 +22,8 @@ This document outlines computational pipelines for protein design and protein pr
   - [Running the Pipeline](#running-the-pipeline)  
     - [AlphaFold 2](#alphafold-2-1)  
     - [AlphaFold 3](#alphafold-3-1)
-  - [Building your own AlphaFold 3 Container](#bulding-your-own-alphafold-3-container) 
-  - [Configuration](#configuration-1)  
+  - [Configuration](#configuration-1)
+  - [Building your own AlphaFold 3 Container](#bulding-your-own-alphafold-3-container)   
 
 - [Customizing the Pipelines](#customizing-the-pipelines)
 

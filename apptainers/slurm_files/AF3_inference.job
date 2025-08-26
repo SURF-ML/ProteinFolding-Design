@@ -52,7 +52,6 @@ REAL_INPUT_JSON_PATH=${PROJECT_SPACE}/alphafold3/outputs/${NAME}/${NAME}_data.js
 cmd_args="--json_path ${REAL_INPUT_JSON_PATH}
 --output_dir ${OUTPUT_PATH}
 --run_data_pipeline=False
---num_recycles 2
 --model_dir ${MODEL_PATH}"
 
 

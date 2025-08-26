@@ -66,6 +66,7 @@ unset LD_PRELOAD
 cmd=(
   apptainer run --nv
   -B "$PWD:/workspace"
+  -B "$(realpath "${OUTPUT_PATH}")"
   --pwd /workspace
   "$AF3_CONTAINER_PATH"
   $cmd_args

@@ -21,7 +21,8 @@ This document outlines computational pipelines for protein design and protein pr
     - [AlphaFold 3](#alphafold-3)  
   - [Running the Pipeline](#running-the-pipeline)  
     - [AlphaFold 2](#alphafold-2-1)  
-    - [AlphaFold 3](#alphafold-3-1)  
+    - [AlphaFold 3](#alphafold-3-1)
+  - [Building your own AlphaFold 3 Container](#bulding-your-own-alphafold-3-container) 
   - [Configuration](#configuration-1)  
 
 - [Customizing the Pipelines](#customizing-the-pipelines)
@@ -153,10 +154,18 @@ OUTPUT_PATH=${PROJECT_SPACE}/alphafold3/outputs/
 # Path to the model weights. Change to the location of your weights
 MODEL_PATH=~/AF3Weights
 
+# Path to the container. Uncomment to use the 3.0.1 container. Can also replace it with your own container. 
+# Uses the hosted AF 3.0.0 container by default
+# AF3_CONTAINER_PATH="/gpfs/work1/0/prjs0859/apptainers/alphafold3/containers/alphafold3_0_1.sif"
+
 # First scheduling data pipeline with passed variables and storing job id.
-jid1=$(sbatch --parsable --export=PROJECT_SPACE,INPUT_JSON_PATH,OUTPUT_PATH slurm_files/AF3_data.job)
+jid1=$(sbatch --parsable \
+  --export=PROJECT_SPACE=$PROJECT_SPACE,INPUT_JSON_PATH=$INPUT_JSON_PATH,OUTPUT_PATH=$OUTPUT_PATH,AF3_CONTAINER_PATH=$AF3_CONTAINER_PATH \
+  slurm_files/AF3_data.job)
 # Scheduling inference job with dependency on data pipeline job.
-sbatch --dependency=afterok:$jid1 --export=PROJECT_SPACE,INPUT_JSON_PATH,OUTPUT_PATH,MODEL_PATH slurm_files/AF3_inference.job
+sbatch --dependency=afterok:$jid1 \
+    --export=PROJECT_SPACE=$PROJECT_SPACE,INPUT_JSON_PATH=$INPUT_JSON_PATH,OUTPUT_PATH=$OUTPUT_PATH,MODEL_PATH=$MODEL_PATH,AF3_CONTAINER_PATH=$AF3_CONTAINER_PATH \
+    slurm_files/AF3_inference.job
 ```
 
 This script can be found in `slurm_files/AF_full_run.sh` and can be executed with:
@@ -180,6 +189,19 @@ AlphaFold 3 specific paths
 
 * `INPUT_JSON_PATH`: The path of the input JSON protein file. Used for both the inference and data pipeline. For the data pipeline path the output JSON with MSAs will be written to the `OUTPUT_PATH` depending on the 'name' property in the JSON. In the inference batch script, the name will be determined by reading the name from this input path, after which it will figure out where the data pipeline wrote the processed JSON file. 
 * `MODEL_PATH`: Path to the model weights of the AlphaFold 3 model. These are not hosted on Snellius and you have to [request these yourself from Google](https://docs.google.com/forms/d/e/1FAIpQLSfWZAgo1aYk0O4MuAXZj8xRQ8DafeFJnldNOnh_13qAx2ceZw/viewform?pli=1). 
+* `AF3_CONTAINER_PATH`: Path to the AF3 container. Defaults to the 3.0.0 version hosted on Snellius in the environment modules. You can also override it to the 3.0.1 version that I prepared in `/gpfs/work1/0/prjs0859/apptainers/alphafold3/containers/alphafold3_0_1.sif`, or point it to one you built yourself (see below).
+
+## Bulding your own AlphaFold 3 container.
+Currently, we only host the 3.0.0 release of AlphaFold 3 in the Snellius environment modules. Version 3.0.1 already supports some [new functionalities](https://github.com/google-deepmind/alphafold3/releases/tag/v3.0.1) and improvements, and there might be future releases with even more functionality. For this reason you might want to build your own container. I have prepared a definition file in `apptainers/alphafold3/alphafold3.def`. You can adapt this file to your needs by alterting the `alphafold_version=3.0.1` flag to reflect the proper version, and optionally include other flags suitable for your specific usecase. Refer to the AlphaFold 3 documentation for examples. [Here are some examples](https://github.com/google-deepmind/alphafold3/blob/main/docs/performance.md).
+
+You can subsequently build the container:
+
+```bash
+apptainer build --fakeroot <PATH_TO_OUTPUT_FILE>.sif apptainers/alphafold3/alphafold3.def
+```
+
+This will take some time, and export your container in a `.sif` file you can then pass to the `AF_CONTAINER_PATH` argument.
+
 
 # Customizing the pipelines
 You can modify the behavior of all pipelines by changing their command-line arguments directly within the example Slurm scripts. For a more complex example, you can also refer to the `rfd_ppi_binder.job` script, which shows a setup for protein-protein interaction (PPI) binder design.

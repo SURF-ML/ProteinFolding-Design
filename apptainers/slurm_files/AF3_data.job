@@ -62,6 +62,7 @@ cmd=(
   apptainer run
   -B "$PWD:/workspace"
   -B "${DATA_PATH}"
+  -B "$(realpath "${OUTPUT_PATH}")"
   --pwd /workspace
   "${AF3_CONTAINER_PATH}"
 )

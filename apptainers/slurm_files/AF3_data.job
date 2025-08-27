@@ -35,18 +35,20 @@ if [ -z "${PROJECT_SPACE}" ]; then
     PROJECT_SPACE="./"
 fi
 
+REAL_PROJECT_SPACE="$(realpath "${PROJECT_SPACE}")"
+
 # Path of the input AF3 json file. Change this to the location of your input file.
 if [ -z "${INPUT_JSON_PATH}" ]; then
-    INPUT_JSON_PATH="./alphafold3/inputs/fold_input.json"
+    INPUT_JSON_PATH="${REAL_PROJECT_SPACE}/alphafold3/inputs/fold_input.json"
 fi
 
 # Path where the output files are written to
 if [ -z "${OUTPUT_PATH}" ]; then
-    OUTPUT_PATH=${PROJECT_SPACE}/alphafold3/outputs/
+    OUTPUT_PATH="${REAL_PROJECT_SPACE}/alphafold3/outputs/"
 fi
 
 # AF3 command line arguments
-cmd_args="--json_path ${INPUT_JSON_PATH}
+cmd_args="--json_path "$(realpath "${INPUT_JSON_PATH}")"
 --output_dir ${OUTPUT_PATH}
 --db_dir ${DATA_PATH}
 --pdb_database_path ${MMCIF_PATH}
@@ -62,7 +64,8 @@ cmd=(
   apptainer run
   -B "$PWD:/workspace"
   -B "${DATA_PATH}"
-  -B "$(realpath "${OUTPUT_PATH}")"
+  -B "${OUTPUT_PATH}"
+  -B "${INPUT_JSON_PATH}"
   --pwd /workspace
   "${AF3_CONTAINER_PATH}"
 )

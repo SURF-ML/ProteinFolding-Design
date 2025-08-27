@@ -28,14 +28,16 @@ if [ -z "${PROJECT_SPACE}" ]; then
     PROJECT_SPACE="./"
 fi
 
+REAL_PROJECT_SPACE="$(realpath "${PROJECT_SPACE}")"
+
 # Path of the original JSON input file used for the data pipeline. Change to the location of your input JSON file.
 if [ -z "${INPUT_JSON_PATH}" ]; then
-    INPUT_JSON_PATH="./alphafold3/inputs/fold_input.json"
+    INPUT_JSON_PATH="${REAL_PROJECT_SPACE}/alphafold3/inputs/fold_input.json"
 fi
 
 # Path where the output files are written to
 if [ -z "${OUTPUT_PATH}" ]; then
-    OUTPUT_PATH=${PROJECT_SPACE}/alphafold3/outputs/
+    OUTPUT_PATH=${REAL_PROJECT_SPACE}/alphafold3/outputs/
 fi
 # Path to the model weights. Change to the location of your weights
 if [ -z "${MODEL_PATH}" ]; then
@@ -46,7 +48,7 @@ fi
 # The AF3 data pipeline will use the 'name' field in the input json to create a subdirectory for the output. Retrieve this name to find the output JSON file with the MSAs.
 # Change this in case you have it stored in a different location
 NAME=$(jq -r '.name' "$INPUT_JSON_PATH" | awk '{print tolower($0)}')
-REAL_INPUT_JSON_PATH=${PROJECT_SPACE}/alphafold3/outputs/${NAME}/${NAME}_data.json
+REAL_INPUT_JSON_PATH=${REAL_PROJECT_SPACE}/alphafold3/outputs/${NAME}/${NAME}_data.json
 
 # arguments
 cmd_args="--json_path ${REAL_INPUT_JSON_PATH}

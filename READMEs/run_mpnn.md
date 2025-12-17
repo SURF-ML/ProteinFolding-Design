@@ -136,3 +136,27 @@ mkdir -p "$OUTPUT_DIR"
 ```
 
 When you submit this modified script, it will find the tools in `PROJECT_SPACE`, read your specific PDB, and dump results into your Scratch folder, regardless of where you run `sbatch` from.
+
+* **Example as seen in the SLURM**:
+  
+We use the environment in the proteinmpnn container.
+```
+CHAINS="A"
+FIXED_RESIDUES="A10 A11 A12 A13"
+BIAS="A:-1.0,G:-0.1,P:-0.5"
+OMIT="C"
+
+apptainer exec --nv \
+  --bind "$PWD":"$PWD":rw \
+  "$CONTAINER_PATH" \
+  python3 "$WRAPPER_SCRIPT" \
+  --pdb_path "$INPUT_PDB" \
+  --out_folder "$OUTPUT_DIR" \
+  --chains_to_design "$CHAINS" \
+  --fixed_positions "$FIXED_RESIDUES" \
+  --bias_AA "$BIAS" \
+  --omit_AA "$OMIT" \
+  --batch_size 5 \
+  --num_seq_per_target 10 \
+  --sampling_temp 0.25
+```

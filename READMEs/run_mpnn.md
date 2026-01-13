@@ -1,6 +1,6 @@
 # IPD-Style ProteinMPNN Wrapper on Snellius
 
-This workflow allows you to define constraints (fixed residues, AA bias) directly in the Slurm script as simple strings, automatically generating the complex JSON files required by the vanilla model behind the scenes.
+This workflow allows you to define constraints (fixed residues, AA bias, symmetry) directly in the Slurm script as simple strings, automatically generating the complex JSON files required by the vanilla model behind the scenes.
 
 ### 1. Overview
 
@@ -8,155 +8,91 @@ This workflow allows you to define constraints (fixed residues, AA bias) directl
 
 ### 2. Step-by-Step Guide
 
-Follow this exact sequence to run a design job.
-
 1. **Navigate to the Project Root:**
-   It is crucial to be in the base directory (e.g., `apptainers/`) so the relative paths in the script work by default.
-
    ```bash
    cd /projects/0/prjs0823/apptainers/
    ```
 
 2. **Configure the Job:**
-   cp (create your own slurm proteinmpnn job) the Slurm example script to set your own constraints and modify the copied file.
-
+   Copy the Slurm example and modify it for your specific project.
    ```bash
-   cp slurm_files/run_mpnn.job my_folder/run_my_own_mpnn.jop
+   cp slurm_files/run_mpnn.job my_folder/run_my_own_mpnn.job
    ```
 
-3. **Submit the Job:**
-
+3. **Submit and Monitor:**
    ```bash
-   sbatch slurm_files/run_mpnn.job
-   ```
-   *Output example:* `Submitted batch job 17653843`
-
-4. **Check Logs:**
-   Verify the job started correctly.
-
-   ```bash
-   cat mpnn_17653843.out
-   cat mpnn_17653843.err
-   ```
-
-5. **Verify Output:**
-   Once finished, check the results folder.
-
-   ```bash
-   ls out/mpnn_designs/
-   ```
-   *Expected Output:*
-   ```
-   seqs  scores  temp_mpnn_files
+   sbatch my_folder/run_my_own_mpnn.job
+   cat mpnn_JOBID.err
    ```
 
 ### 3. How to Configure the Run
 
 #### A. Selecting Chains
-
-Define which chain(s) ProteinMPNN should redesign. All other chains will be automatically fixed (used as context).
-
+Define which chain(s) to redesign. Fixed chains are used as structural context.
 ```bash
-# Example: Redesign only Chain A
-CHAINS="A" 
-
-# Example: Redesign Chain A and Chain B
-CHAINS="A B"
+CHAINS="A B C"
 ```
 
 #### B. Fixing Specific Residues (`FIXED_RESIDUES`)
-
-Prevent specific residues from changing during design. Useful for preserving motifs or active sites.
-
-* **Format:** A space-separated list of `ChainID` + `ResidueNumber`.
-* **Important:** The residue numbers must match the input PDB exactly.
-
+Format: `ChainID` + `ResidueNumber`. Must match PDB numbering.
 ```bash
-# Example: Fix residues 10, 11, 12, and 13 on Chain A
-FIXED_RESIDUES="A10 A11 A12 A13"
-
-# Example: Fix residue 50 on Chain A and residue 25 on Chain B
-FIXED_RESIDUES="A50 B25"
+FIXED_RESIDUES="A10 A11 B25"
 ```
 
-#### C. Biasing Amino Acids (`BIAS`)
-
-Encourage or discourage specific amino acids globally.
-
-* **Format:** `AminoAcid:BiasValue`, separated by commas.
-* **Values:** Negative values (e.g., `-1.0`) make that AA *less* likely. Positive values make it *more* likely.
-
+#### C. Symmetry / Tied Positions (`TIED_RESIDUES`)
+Enforce identical sequences across chains (e.g., for homotrimers).
+* **Format:** `ChainIDStart-End, ChainIDStart-End`
+* **Requirement:** Innermost ranges must be the same length.
 ```bash
-# Example: Reduce Alanine (A) significantly, Glycine (G) slightly, and Proline (P) moderately
-BIAS="A:-1.0,G:-0.1,P:-0.5"
+# Example: Tie residues 1-150 across Chains A, B, and C
+TIED_RESIDUES="A1-150, B1-150, C1-150"
 ```
 
-#### D. Omitting Amino Acids (`OMIT`)
-
-Globally ban specific amino acids from being used in the design.
-
-* **Format:** A string of single-letter codes.
-* **Standard Practice:** Often set to "C" to prevent free cysteines (disulfide issues). Set to "X" to omit nothing.
-
+#### D. Biasing & Omitting Amino Acids
+* **BIAS:** `AA:Value` (Negative = less likely, Positive = more likely).
+* **OMIT:** String of single-letter codes (e.g., "C" for no Cysteines).
 ```bash
-# Example: Do not generate Cysteines
+BIAS="A:-1.0,W:0.5"
 OMIT="C"
 ```
 
-#### E. Execution Command
+#### E. Expert Flags
+* **--use_soluble_model:** Recommended for de novo/soluble protein design to avoid surface hydrophobes.
+* **--sampling_temp:** String of values for diversity sweeps (e.g. "0.1 0.2 0.3").
 
-The script uses `apptainer exec` to pass these variables to the Python wrapper. Note that variables like `"$FIXED_RESIDUES"` are quoted so Python receives them as a single argument.
+### 4. Full Slurm Execution Example
 
-### 4. Custom Input/Output Paths
-
-If you are running the script from a different folder, or want your output saved elsewhere (e.g., on Scratch), you must use **Absolute Paths** in the Slurm script.
-
-**Example Scenario:**
-* **Wrapper/Container Location:** `/projects/0/prjs0823/apptainers/`
-* **Your Input PDB:** `/home/bryanc/my_pdbs/test.pdb`
-* **Desired Output:** `/scratch/bryanc/mpnn_results/`
-
-**How to edit `slurm_files/run_mpnn.job`:**
+Ensure you use **Absolute Paths** when running from different directories.
 
 ```bash
 # --- 1. SETUP VARIABLES ---
+PROJECT_DIR="/projects/0/prjs0823"
+CONTAINER_PATH="$PROJECT_DIR/apptainers/proteinmpnn/containers/proteinmpnn-torch2-cuda11.8.sif"
+WRAPPER_SCRIPT="$PROJECT_DIR/apptainers/proteinmpnn/run_mpnn_cli.py"
 
-# 1. Set PROJECT_SPACE to the ABSOLUTE path where the wrapper/container lives
-#    (Do not use "." if you are submitting from elsewhere)
-PROJECT_SPACE="/projects/0/prjs0823/apptainers"
-
-# ... (Container and Wrapper paths use PROJECT_SPACE automatically) ...
-
-# 2. Point to your specific input PDB (Absolute Path)
-INPUT_PDB="/home/bryanc/my_pdbs/test.pdb"
-
-# 3. Point to your desired output folder (Absolute Path)
-OUTPUT_DIR="/scratch/bryanc/mpnn_results"
+INPUT_PDB="/home/user/my_pdbs/trimer.pdb"
+OUTPUT_DIR="/scratch/user/results/trimer_01"
 mkdir -p "$OUTPUT_DIR"
-```
 
-When you submit this modified script, it will find the tools in `PROJECT_SPACE`, read your specific PDB, and dump results into your Scratch folder, regardless of where you run `sbatch` from.
+# --- 2. DESIGN CONSTRAINTS ---
+CHAINS="A B C"
+TIED="A1-150, B1-150, C1-150"
+FIXED="A10 A11"
+BIAS="C:-2.0"
 
-* **Example as seen in the SLURM**:
-  
-We use the environment in the proteinmpnn container.
-```
-CHAINS="A"
-FIXED_RESIDUES="A10 A11 A12 A13"
-BIAS="A:-1.0,G:-0.1,P:-0.5"
-OMIT="C"
-
+# --- 3. RUN ---
 apptainer exec --nv \
-  --bind "$PWD":"$PWD":rw \
+  --bind "$PROJECT_DIR":"$PROJECT_DIR":rw \
   "$CONTAINER_PATH" \
   python3 "$WRAPPER_SCRIPT" \
   --pdb_path "$INPUT_PDB" \
   --out_folder "$OUTPUT_DIR" \
   --chains_to_design "$CHAINS" \
-  --fixed_positions "$FIXED_RESIDUES" \
+  --tied_positions "$TIED" \
+  --fixed_positions "$FIXED" \
   --bias_AA "$BIAS" \
-  --omit_AA "$OMIT" \
-  --batch_size 5 \
-  --num_seq_per_target 10 \
-  --sampling_temp 0.25
+  --use_soluble_model \
+  --sampling_temp "0.1 0.2" \
+  --num_seq_per_target 50 \
+  --batch_size 10
 ```

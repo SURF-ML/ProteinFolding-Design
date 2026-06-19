@@ -16,7 +16,7 @@ DATA_PATH=/projects/2/managed_datasets/AlphaFold/2.3.1
 
 # --- VARIABLE DEFINITIONS ---
 # Define the base project directory
-PROJECT_SPACE=/projects/2/prjs0823/ProteinFolding-Design/apptainers # Change this to your project directory
+PROJECT_SPACE=/projects/2/prjs0823/ProteinFolding-Design/apptainers
 
 # File path of the input .fasta file. Change you to your desired file
 INPUT_FASTA=${PROJECT_SPACE}/alphafold2/inputs/rcsb_pdb_7XTB.fasta

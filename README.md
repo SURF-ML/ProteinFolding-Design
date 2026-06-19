@@ -1,5 +1,5 @@
 # Introduction
-This document outlines computational pipelines for protein design and protein prediction, focussed on using apptainers on Snellius. 
+This document outlines computational pipelines for protein design and protein prediction, focussed on using Apptainers on Snellius. 
 
 ## Table of contents
 
@@ -10,18 +10,15 @@ This document outlines computational pipelines for protein design and protein pr
   - [Overview](#overview)  
   - [How to Run the Pipeline](#how-to-run-the-pipeline)  
   - [Configuration](#configuration)  
-    - [Notes on Apptainer Usage](#notes-on-apptainer-usage)  
+    - [Notes on Apptainer Usage](#notes-on-Apptainer-usage)  
   - [Running Stages Separately](#running-stages-separately)  
     - [To run ONLY RFdiffusion](#to-run-only-rfdiffusion)  
     - [To run ONLY ProteinMPNN](#to-run-only-proteinmpnn)  
 
 - [Protein Structure Prediction (AF2/3)](#protein-structure-prediction-af23)  
-  - [Loading the Modules](#loading-the-modules)  
-    - [AlphaFold 2](#alphafold-2)  
-    - [AlphaFold 3](#alphafold-3)  
-  - [Running the Pipeline](#running-the-pipeline)  
-    - [AlphaFold 2](#alphafold-2-1)  
-    - [AlphaFold 3](#alphafold-3-1)
+  - [AlphaFold 2](#alphafold-2)
+  - [AlphaFold 3](#alphafold-3)  
+    - [Running the Pipeline](#running-the-piplines)  
   - [Configuration](#configuration-1)
   - [Building your own AlphaFold 3 Container](#bulding-your-own-alphafold-3-container)   
 
@@ -75,7 +72,7 @@ You must edit the following variables in the Slurm script before submitting:
 
 * **Overlay File**: The script creates a temporary `rfdiffusion_overlay.img` file. The default size of 128MB is sufficient for this examples. You should increase this size if you are generating a very large number of intermediate files and run into storage errors during the run.
 
-* **File Binding**: For ProteinMPNN to read the output from RFdiffusion and write its own results, its container needs access to the working directory. This is handled by the `--bind "$PWD":"$PWD":rw` flag in the `apptainer run` command.
+* **File Binding**: For ProteinMPNN to read the output from RFdiffusion and write its own results, its container needs access to the working directory. This is handled by the `--bind "$PWD":"$PWD":rw` flag in the `Apptainer run` command.
 
 ## Running Stages Separately
 
@@ -95,39 +92,35 @@ If you already have generated scaffolds, use the `proteinmpnn_example.job` scrip
 sbatch slurm_files/proteinmpnn_example.job
 ```
 
-
 # Protein Structure Prediction (AF2/3)
-For protein structure prediction we have both AlphaFold 2 and AlphaFold 3 available on the system as pre-installed containers. These are freely available in our [environment modules](https://servicedesk.surf.nl/wiki/spaces/WIKI/pages/30660245/Environment+Modules). For more in-depth information about these, refer to `READMEs/alphafold_on_snellius.md` & `READMEs/alphafold3_on_snellius.md`.
+For protein structure prediction you can use both both AlphaFold 2 and AlphaFold 3. AlphaFold 3 is freely available in our [environment modules](https://servicedesk.surf.nl/wiki/spaces/WIKI/pages/30660245/Environment+Modules). Since the removal of the 2022 software stack AlphaFold 2 is no longer available there, but is instead available as pre-built Apptainer at For more in-depth information about these, refer to `READMEs/alphafold_on_snellius.md` & `READMEs/alphafold3_on_snellius.md`.
 
-## Loading the Modules
-Both AlphaFold 2 and AlphaFold 3 are available as modules on our system, and can be loaded as follows:
+## AlphaFold 2
+Since the removal of the 2022 software stack we no longer host AlphaFold 2 in the environment modules. However, we do host an Apptainer image at `/projects/2/managed_datasets/AlphaFold/2.3.1/alphafold_2_latest.sif`. You can use this `.sif`image directly, or create a copy at another location.
 
-### AlphaFold 2
+Alternatively, you can create the image by converting an existing docker image to Apptainer. For example, the available `.sif` was created using:
 ```bash
-module load 2022
-module load AlphaFold/2.3.1-foss-2022a-CUDA-11.7.0
+Apptainer pull docker://catgumag/alphafold:latest
 ```
-**Note**: the 2022 software stack is *not* available on the H100 GPU nodes. So it should be used on the A100 nodes.
-### AlphaFold 3
+which converts the Docker image to Apptainer and creates an `alphafold_latest.sif` Apptainer image file.
+
+### Slurm file
+Similar as before, there is simple Slurm scripts in `slurm_files/AF2.job`. Unlike AlphaFold 3, AlphaFold 2 does not support easily splitting the CPU-only data pipeline from the GPU-accelerated inference. Therefore, this is simply a single script that executes both the CPU only data pipeline and the GPU pipeline in one go. You can adapt this the Slurm file, and run it using
+```bash
+sbatch slurm_files/AF2.job
+```
+
+## AlphaFold 3
+AlphaFold 3 is available as a module on our system, and can be loaded as follows:
+
 ```bash
 module load 2024
 module load AlphaFold/3.0.0-foss-2024a-CUDA-12.6.0
 ```
 
-## Running the Pipeline
 
-
-Similar as before, there are example SLURM scripts in the `slurm_files` directory for both AlphaFold variants. 
-
-### AlphaFold 2
-For AlphaFold 2, this is simply a single script that executes both the CPU only data pipeline and the GPU pipeline in one go. Unfortunately, it does not allow splitting the workload, which would reduce the GPU idling time. This pipeline can be executed using
-```bash
-sbatch slurm_files/AF2.job
-```
-
-
-### AlphaFold 3
-AlphaFold 3 does support splitting the pipeline, allowing us to run the CPU-only data pipeline on CPU nodes and the GPU model inference pipeline on GPU nodes. The two scripts to run are:
+### Running the pipline(s)
+For AlphaFold 3 we also have job scripts in the `slurm_files` directory. AlphaFold 3 does support splitting the pipeline, allowing us to run the CPU-only data pipeline on CPU nodes and the GPU model inference pipeline on GPU nodes. The two scripts to run are:
 
 ```bash
 sbatch slurm_files/AF3_data.job
@@ -157,7 +150,7 @@ MODEL_PATH=~/AF3Weights
 
 # Path to the container. Uncomment to use the 3.0.1 container. Can also replace it with your own container. 
 # Uses the hosted AF 3.0.0 container by default
-# AF3_CONTAINER_PATH="/gpfs/work1/0/prjs0859/apptainers/alphafold3/containers/alphafold3_0_1.sif"
+# AF3_CONTAINER_PATH="/gpfs/work1/0/prjs0859/Apptainers/alphafold3/containers/alphafold3_0_1.sif"
 
 # First scheduling data pipeline with passed variables and storing job id.
 jid1=$(sbatch --parsable \
@@ -174,9 +167,9 @@ This script can be found in `slurm_files/AF_full_run.sh` and can be executed wit
 bash slurm_files/AF_full_run.sh
 ```
 
-**Note**: While the apptainer is pre-installed on Snellius with the environment modules, we do need to change some apptainer arguments to properly run it. Therefore we'll still use `apptainer run`, and we'll still have to bind (`-B`) some directories and pass the Nvidia GPU (`--nv`). See `READMEs/AlphaFold3_on_snellius.md` for more information.
+**Note**: While the Apptainer is pre-installed on Snellius with the environment modules, we do need to change some Apptainer arguments to properly run it. Therefore we'll still use `Apptainer run`, and we'll still have to bind (`-B`) some directories and pass the Nvidia GPU (`--nv`). See `READMEs/AlphaFold3_on_snellius.md` for more information.
 
-### Configuration
+## Configuration
 Both of these scripts also require some variable configurations, similar as before. Here is a list with some variables to change for both AlphaFold 2 and AlphaFold 3:
 
 * `PROJECT_SPACE`: Set this to the root directory of your project. The default is `"./"`.
@@ -190,15 +183,15 @@ AlphaFold 3 specific paths
 
 * `INPUT_JSON_PATH`: The path of the input JSON protein file. Used for both the inference and data pipeline. For the data pipeline path the output JSON with MSAs will be written to the `OUTPUT_PATH` depending on the 'name' property in the JSON. In the inference batch script, the name will be determined by reading the name from this input path, after which it will figure out where the data pipeline wrote the processed JSON file. 
 * `MODEL_PATH`: Path to the model weights of the AlphaFold 3 model. These are not hosted on Snellius and you have to [request these yourself from Google](https://docs.google.com/forms/d/e/1FAIpQLSfWZAgo1aYk0O4MuAXZj8xRQ8DafeFJnldNOnh_13qAx2ceZw/viewform?pli=1). 
-* `AF3_CONTAINER_PATH`: Path to the AF3 container. Defaults to the 3.0.0 version hosted on Snellius in the environment modules. You can also override it to the 3.0.1 version that I prepared in `/gpfs/work1/0/prjs0859/apptainers/alphafold3/containers/alphafold3_0_1.sif`, or point it to one you built yourself (see below).
+* `AF3_CONTAINER_PATH`: Path to the AF3 container. Defaults to the 3.0.0 version hosted on Snellius in the environment modules. You can also override it to the 3.0.1 version that I prepared in `/gpfs/work1/0/prjs0859/Apptainers/alphafold3/containers/alphafold3_0_1.sif`, or point it to one you built yourself (see below).
 
 ## Bulding your own AlphaFold 3 container.
-Currently, we only host the 3.0.0 release of AlphaFold 3 in the Snellius environment modules. Version 3.0.1 already supports some [new functionalities](https://github.com/google-deepmind/alphafold3/releases/tag/v3.0.1) and improvements, and there might be future releases with even more functionality. For this reason you might want to build your own container. I have prepared a definition file in `apptainers/alphafold3/alphafold3.def`. You can adapt this file to your needs by alterting the `alphafold_version=3.0.1` flag to reflect the proper version, and optionally include other flags suitable for your specific usecase. Refer to the AlphaFold 3 documentation for examples. [Here are some examples](https://github.com/google-deepmind/alphafold3/blob/main/docs/performance.md).
+Currently, we only host the 3.0.0 release of AlphaFold 3 in the Snellius environment modules. Version 3.0.1 already supports some [new functionalities](https://github.com/google-deepmind/alphafold3/releases/tag/v3.0.1) and improvements, and there might be future releases with even more functionality. For this reason you might want to build your own container. I have prepared a definition file in `Apptainers/alphafold3/alphafold3.def`. You can adapt this file to your needs by alterting the `alphafold_version=3.0.1` flag to reflect the proper version, and optionally include other flags suitable for your specific usecase. Refer to the AlphaFold 3 documentation for examples. [Here are some examples](https://github.com/google-deepmind/alphafold3/blob/main/docs/performance.md).
 
 You can subsequently build the container:
 
 ```bash
-apptainer build --fakeroot <PATH_TO_OUTPUT_FILE>.sif apptainers/alphafold3/alphafold3.def
+Apptainer build --fakeroot <PATH_TO_OUTPUT_FILE>.sif Apptainers/alphafold3/alphafold3.def
 ```
 
 This will take some time, and export your container in a `.sif` file you can then pass to the `AF_CONTAINER_PATH` argument.
